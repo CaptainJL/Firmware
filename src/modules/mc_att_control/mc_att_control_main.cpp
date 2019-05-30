@@ -346,6 +346,54 @@ MulticopterAttitudeControl::sensor_correction_poll()
 }
 
 void
+MulticopterAttitudeControl::vehicle_rc_poll()
+{
+	bool updated;
+
+	/* Check RC state if vehicle status has changed */
+	orb_check(_v_rc_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(rc_channels), _v_rc_sub, &_v_rc_channels);
+	}
+}
+
+void
+MulticopterAttitudeControl::external_cmd_poll()
+{
+	/* check if there is a new message */
+	bool updated;
+	orb_check(_ext_cmd_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(external_cmd), _ext_cmd_sub, &_ext_cmd);
+	}
+}
+
+void
+MulticopterAttitudeControl::velocity_filter_poll()
+{
+	/* check if there is a new message */
+	bool updated;
+	orb_check(_v_filt_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(velocity_filter), _v_filt_sub, &_v_filt);
+	}
+}
+
+void MulticopterAttitudeControl::velocity_control_poll()
+{
+	/* check if there is a new message */
+	bool updated;
+	orb_check(_v_ctrl_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(velocity_control), _v_ctrl_sub, &_v_ctrl);
+	}	
+}
+
+void
 MulticopterAttitudeControl::sensor_bias_poll()
 {
 	/* check if there is a new message */
@@ -367,6 +415,9 @@ void
 MulticopterAttitudeControl::control_attitude(float dt)
 {
 	vehicle_attitude_setpoint_poll();
+	velocity_filter_poll();
+	velocity_control_poll();
+	external_cmd_poll();
 	_thrust_sp = _v_att_sp.thrust;
 
 	/* prepare yaw weight from the ratio between roll/pitch and yaw gains */
@@ -379,6 +430,7 @@ MulticopterAttitudeControl::control_attitude(float dt)
 	Quatf q(_v_att.q);
 	Quatf qd(_v_att_sp.q_d);
 
+
 	/* ensure input quaternions are exactly normalized because acosf(1.00001) == NaN */
 	q.normalize();
 	qd.normalize();
@@ -386,6 +438,16 @@ MulticopterAttitudeControl::control_attitude(float dt)
 	/* calculate reduced desired attitude neglecting vehicle's yaw to prioritize roll and pitch */
 	Vector3f e_z = q.dcm_z();
 	Vector3f e_z_d = qd.dcm_z();
+
+	/* If External Velocity mode selected - use velocity_control setpoints */
+	if (_v_rc_channels.channels[_vel_rc_channel.get()-1]>_vel_rc_threshold.get()  &&  _v_control_mode.flag_armed && _ext_cmd.cmd_valid)
+	{
+		e_z_d(0) =		_v_ctrl.roll_d;
+		e_z_d(1) =		_v_ctrl.pitch_d;
+		e_z_d(2) = 		_v_ctrl.yaw_d;
+		_thrust_sp =	_v_ctrl.thrust_d;
+	}
+
 	Quatf qd_red(e_z, e_z_d);
 
 	if (abs(qd_red(1)) > (1.f - 1e-5f) || abs(qd_red(2)) > (1.f - 1e-5f)) {
@@ -601,6 +663,11 @@ MulticopterAttitudeControl::run()
 	_vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
 	_motor_limits_sub = orb_subscribe(ORB_ID(multirotor_motor_limits));
 	_battery_status_sub = orb_subscribe(ORB_ID(battery_status));
+	_v_rc_sub = orb_subscribe(ORB_ID(rc_channels));
+	_ext_cmd_sub = orb_subscribe(ORB_ID(external_cmd));
+	_v_filt_sub = orb_subscribe(ORB_ID(velocity_filter));
+	_v_ctrl_sub = orb_subscribe(ORB_ID(velocity_control));
+
 
 	_gyro_count = math::min(orb_group_count(ORB_ID(sensor_gyro)), MAX_GYRO_COUNT);
 
@@ -681,6 +748,9 @@ MulticopterAttitudeControl::run()
 			vehicle_attitude_poll();
 			sensor_correction_poll();
 			sensor_bias_poll();
+			velocity_filter_poll();
+			velocity_control_poll();
+			external_cmd_poll();
 
 			/* Check if we are in rattitude mode and the pilot is above the threshold on pitch
 			 * or roll (yaw can rotate 360 in normal att control).  If both are true don't
@@ -847,6 +917,10 @@ MulticopterAttitudeControl::run()
 	orb_unsubscribe(_vehicle_status_sub);
 	orb_unsubscribe(_motor_limits_sub);
 	orb_unsubscribe(_battery_status_sub);
+	orb_unsubscribe(_v_rc_sub);
+	orb_unsubscribe(_ext_cmd_sub);
+	orb_unsubscribe(_v_filt_sub);
+	orb_unsubscribe(_v_ctrl_sub);
 
 	for (unsigned s = 0; s < _gyro_count; s++) {
 		orb_unsubscribe(_sensor_gyro_sub[s]);

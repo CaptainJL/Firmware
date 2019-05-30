@@ -590,3 +590,27 @@ PARAM_DEFINE_FLOAT(MC_DTERM_CUTOFF, 30.f);
  */
 PARAM_DEFINE_INT32(MC_AIRMODE, 0);
 
+/**
+ * External Velocity Channel Select
+ *
+ * RC Channel for which turns on Velocity Control via External source (excluding offboard)
+ *
+ * @min 0
+ * @max 7
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_INT32(VEL_EXT_CHN, 6);
+
+/**
+ * External Velocity RC Threshold
+ *
+ * RC Channel switch threshold for enabling
+ *
+ * @min -1.0
+ * @max 1.0
+ * @decimal 2
+ * @increment 0.1
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(VEL_EXT_THR, 0.25f);
+

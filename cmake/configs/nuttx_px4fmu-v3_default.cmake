@@ -129,6 +129,14 @@ set(config_module_list
 	modules/dataman
 
 	#
+	# Jean-Luc (CaptainJL) modules
+	#
+	modules/velocity_filter
+	modules/velocity_control
+	modules/gymbal_ctrl
+	modules/px4_Quad2GPU
+
+	#
 	# OBC challenge
 	#
 	examples/bottle_drop

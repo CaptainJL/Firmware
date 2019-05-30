@@ -55,6 +55,11 @@
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/rc_channels.h>
+#include <uORB/topics/velocity_filter.h>
+#include <uORB/topics/external_cmd.h>
+#include <uORB/topics/velocity_control.h>
+
 
 /**
  * Multicopter attitude control app start / stop handling function
@@ -107,6 +112,10 @@ private:
 	void		vehicle_motor_limits_poll();
 	void		vehicle_rates_setpoint_poll();
 	void		vehicle_status_poll();
+	void 		vehicle_rc_poll();
+	void		external_cmd_poll();
+	void 		velocity_filter_poll();
+	void 		velocity_control_poll();
 
 	/**
 	 * Attitude controller.
@@ -136,6 +145,11 @@ private:
 	int		_sensor_gyro_sub[MAX_GYRO_COUNT];	/**< gyro data subscription */
 	int		_sensor_correction_sub{-1};	/**< sensor thermal correction subscription */
 	int		_sensor_bias_sub{-1};		/**< sensor in-run bias correction subscription */
+	int 	_v_rc_sub{-1};
+	int 	_ext_cmd_sub{-1};
+	int 	_v_filt_sub{-1};
+	int 	_v_ctrl_sub{-1};
+
 
 	unsigned _gyro_count{1};
 	int _selected_gyro{0};
@@ -160,6 +174,11 @@ private:
 	struct sensor_gyro_s			_sensor_gyro {};	/**< gyro data before thermal correctons and ekf bias estimates are applied */
 	struct sensor_correction_s		_sensor_correction {};	/**< sensor thermal corrections */
 	struct sensor_bias_s			_sensor_bias {};	/**< sensor in-run bias corrections */
+	struct rc_channels_s			_v_rc_channels {};
+	struct external_cmd_s 			_ext_cmd {};
+	struct velocity_filter_s		_v_filt {};
+	struct velocity_control_s 		_v_ctrl {};
+
 
 	MultirotorMixer::saturation_status _saturation_status{};
 
@@ -227,6 +246,9 @@ private:
 		(ParamFloat<px4::params::MC_RATT_TH>) _rattitude_thres,
 
 		(ParamBool<px4::params::MC_BAT_SCALE_EN>) _bat_scale_en,
+
+		(ParamInt<px4::params::VEL_EXT_CHN>) _vel_rc_channel,
+		(ParamFloat<px4::params::VEL_EXT_THR>) _vel_rc_threshold,
 
 		(ParamInt<px4::params::SENS_BOARD_ROT>) _board_rotation_param,
 
